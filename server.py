@@ -4,106 +4,55 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 from flask_cors import CORS
 
+import time
 import datetime
 
-x = datetime.datetime.now()
-
-# Initializing flask app
 app = Flask(__name__)
 client = MongoClient(
     "mongodb+srv://HARSHDALWADI:Harsh1234@cluster0.bjw1qby.mongodb.net/"
 )
-db = client["flaskfullstack"]
+db = client["realTimeStockData"]
 CORS(app)
 
-
-# Route for seeing a data
-@app.route("/data")
-def get_time():
-    # Returning an api for showing in reactjs
-    return {"Name": "geek", "Age": "22", "Date": x, "programming": "python"}
-
-
-@app.route("/users", methods=["POST", "GET"])
-def data():
-    if request.method == "POST":
-        body = request.json
-        firstName = body["firstName"]
-        lastName = body["lastName"]
-        emailid = body["emailid"]
-        db["users"].insert_one(
-            {"firstName": firstName, "lastName": lastName, "emailid": emailid}
-        )
-        return {
-            "status": "data is posted to MongoDb",
-            "firstName": firstName,
-            "lastName": lastName,
-            "emailid": emailid,
-        }
-
+def convert_data(data):
+    g_list = []
+    for val in data:
+        g_list.append([time.mktime(datetime.datetime.strptime(val['date'],"%Y-%m-%d").timetuple()),float(val['dayClose'])])
+    return g_list
+@app.route("/stocks", methods=["GET"])
+def get_all_stock():
     if request.method == "GET":
-        allData = db["users"].find()
+        allData = db["history_data"].find()
         dataJson = []
         for data in allData:
-            id = data["_id"]
-            firstName = data["firstName"]
-            lastName = data["lastName"]
-            emailid = data["emailid"]
-
-            dataDict = {
-                "id": str(id),
-                "firstName": firstName,
-                "lastName": lastName,
-                "emailid": emailid,
-            }
-
-            dataJson.append(dataDict)
+            dataJson.append(
+                {
+                    "_id": str(data["_id"]),
+                    "companyLogo": data["companyLogo"],
+                    "companyName": data["companyName"],
+                    "price": data["price"],
+                    "volume": data["volume"],
+                    "marketCap": data["marketCap"],
+                }
+            )
 
         return dataJson
+    
+@app.route('/stocks/<string:id>', methods = ['GET'])
+def single_stock_data(id):
 
+    if(request.method == 'GET'):
+        data = db['history_data'].find_one({'_id' : ObjectId(id)})
+        convert_data(data['data'])
+        return {'_id' : str(data['_id']),
+                'companyLogo': data['companyLogo'],
+                'companyName': data['companyName'],
+                'price': data['price'],
+                'volume': data['volume'],
+                'marketCap': data['marketCap'],
+                'historical_data' : convert_data(data['data'])}
 
-@app.route("/users/<string:id>", methods=["GET", "PUT", "DELETE"])
-def onedata(id):
-    if request.method == "GET":
-        data = db["users"].find_one({"_id": ObjectId(id)})
-        id = data["_id"]
-        firstName = data["firstName"]
-        lastName = data["lastName"]
-        emailid = data["emailid"]
-
-        dataDict = {
-            "id": str(id),
-            "firstName": firstName,
-            "lastName": lastName,
-            "emailid": emailid,
-        }
-
-        return dataDict
-
-    if request.method == "DELETE":
-        if(ObjectId(id)):
-            db["users"].delete_one({"_id": ObjectId(id)})
-            return {"status": "Data id:" + id + " is deleted"}
-        else:
-            return {"status": "Data not exist"}
-
-    if request.method == "PUT":
-        body = request.json
-        firstName = body["firstName"]
-        lastName = body["lastName"]
-        emailid = body["emailid"]
-
-        db["users"].update_one(
-            {"_id": ObjectId(id)},
-            {
-                "$set": {
-                    "firstName": firstName,
-                    "lastName": lastName,
-                    "emailid": emailid,
-                }
-            },
-        )
-        return {"status": "Data id:" + id + " is updated"}
+    
 
 
 # Running app
