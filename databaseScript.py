@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from tabulate import tabulate
+# from tabulate import tabulate
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -9,12 +9,15 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from pymongo import MongoClient
 import os
+import datetime
 
 
 import csv
 
 import time
 
+START_DATE = datetime.datetime(1950,1,1)
+END_DATE = datetime.datetime.now()
 
 def send_data_mongo(data):
     client = MongoClient(
@@ -159,28 +162,32 @@ def download_csv(url, driver):
     driver.get(url)
 
     # Finding nav bar to go on historical tab.
-    nav_bar = driver.find_element(By.ID, "quote-nav")
-    all_a = nav_bar.find_elements(By.TAG_NAME, "a")
+    # nav_bar = driver.find_element(By.ID, "quote-nav")
+    # all_a = nav_bar.find_elements(By.TAG_NAME, "a")
 
-    # Now we are in the historical tab so we will access the tab
-    driver.get(all_a[5].get_attribute("href"))
+    # # Now we are in the historical tab so we will access the tab
+    # driver.get(all_a[5].get_attribute("href"))
 
-    # here we get historical data now we have click on max so that we get max data range.
-    table = driver.find_element(By.ID, "Col1-1-HistoricalDataTable-Proxy")
+    # # here we get historical data now we have click on max so that we get max data range.
+    # table = driver.find_element(By.ID, "Col1-1-HistoricalDataTable-Proxy")
 
-    table_range_btn = table.find_element(By.CLASS_NAME, "dateRangeBtn")
+    # table_range_btn = table.find_element(By.CLASS_NAME, "dateRangeBtn")
 
-    table_range_btn.click()
-    viewbox = WebDriverWait(driver, 10).until(
-        EC.visibility_of_element_located((By.ID, "dropdown-menu"))
-    )
+    # table_range_btn.click()
+    # viewbox = WebDriverWait(driver, 10).until(
+    #     EC.visibility_of_element_located((By.ID, "dropdown-menu"))
+    # )
 
-    drop_down_uls = viewbox.find_elements(By.TAG_NAME, "ul")
-    # print(drop_down_uls)
-    li_btns = drop_down_uls[1].find_elements(By.TAG_NAME, "li")
-    li_btns[3].click()
+    # drop_down_uls = viewbox.find_elements(By.TAG_NAME, "ul")
+    # # print(drop_down_uls)
+    # li_btns = drop_down_uls[1].find_elements(By.TAG_NAME, "li")
+    # li_btns[3].click()
     # drop_down.find_elements(By.TAG_NAME,'ul')
-    print(table_range_btn.text)
+#     print(table_range_btn.text)
+#     done_button = WebDriverWait(driver, 10).until(
+#     EC.presence_of_element_located((By.XPATH, "//button[text()='Done']"))
+# )
+#     done_button.click()
 
     # apply_btn = WebDriverWait(driver, 10).until(
     #     EC.element_to_be_clickable((By.CSS_SELECTOR, "button[class^='Bgc($linkColor)']"))
@@ -188,33 +195,40 @@ def download_csv(url, driver):
     # driver.switch_to.default_content()
     # viewbox.send_keys(Keys.RETURN)
 
-    apply_btn = table.find_element(By.TAG_NAME, "button")
-    print(apply_btn.text)
-    apply_btn.click()
+    # apply_btn = table.find_element(By.XPATH, '//*[@id="Col1-1-HistoricalDataTable-Proxy"]/section/div[1]/div[1]/button')
+    # print(apply_btn.text)
+    # apply_btn.click()
 
+    # time.sleep(10)
+
+    # download_link = WebDriverWait(driver, 10).until(
+    #     EC.visibility_of_element_located(
+    #         (
+    #             By.XPATH,
+    #             '//*[@id="Col1-1-HistoricalDataTable-Proxy"]/section/div[1]/div[2]/span[2]/a',
+    #         )
+    #     )
+    #     # EC.presence_of_element_located((By.XPATH, "//a[contains(@download, '.csv')]"))
+    # )
     time.sleep(5)
-
-    download_link = WebDriverWait(driver, 10).until(
-        EC.visibility_of_element_located(
-            (
-                By.XPATH,
-                '//*[@id="Col1-1-HistoricalDataTable-Proxy"]/section/div[1]/div[2]/span[2]/a/span',
-            )
-        )
-    )
-
-    download_link.click()
+    download_link = driver.find_element(By.XPATH, '//*[@id="Col1-1-HistoricalDataTable-Proxy"]/section/div[1]/div[2]/span[2]/a')
+# //*[@id="Col1-1-HistoricalDataTable-Proxy"]/section/div[1]/div[2]/span[2]/a
+    download_url = download_link.get_attribute('href')
+    download_url = download_url.split('?')[0] + f'?period1={int(START_DATE.timestamp())}&period2={int(END_DATE.timestamp())}&interval=1d&events=history&includeAdjustedClose=true'
+    print(download_url)
+    driver.get(download_url)
 
     time.sleep(5)
     driver.close()
-
+def get_live_data():
+    pass
 
 def __main__():
     # # url of the page we want to scrape
     url = "https://finance.yahoo.com/most-active"
 
-    download_path = r"D:\USA\Artificial Stock market\backend\src\\"
-
+    # download_path = r"D:\USA\Artificial Stock market\backend\src\\"
+    download_path = os.path.expanduser('~/Desktop/code/Artificial-Stock-Market-Backend/src')
     options = webdriver.ChromeOptions()
     prefs = {"download.default_directory": download_path}
     options.add_experimental_option(
@@ -243,8 +257,11 @@ def __main__():
     # companies = []
     tbody = driver.find_element(By.TAG_NAME, "tbody")
     # rows = tbody.find_elements(By.TAG_NAME, "tr")
+    
     for row in tbody.find_elements(By.TAG_NAME, "tr"):
+        
         columns = row.find_elements(By.TAG_NAME, "td")
+        
         # print(columns)
         if columns != []:
             company = {
@@ -260,16 +277,22 @@ def __main__():
             # history = get_history(
             #     columns[0].find_element(By.TAG_NAME, "a").get_attribute("href"), driver
             # )
+            urlsplit = columns[0].find_element(By.TAG_NAME, "a").get_attribute("href").split('?')[0] 
+            download_csv_url = urlsplit + f'/history?period1={int(START_DATE.timestamp())}&period2={int(END_DATE.timestamp())}&interval=1d&filter=history&frequency=1d&includeAdjustedClose=true'
+            print(download_csv_url)
             download_csv(
-                columns[0].find_element(By.TAG_NAME, "a").get_attribute("href"), webdriver.Chrome(options = options)
+                download_csv_url, webdriver.Chrome(options = options)
             )
+        
             cur_dir = os.path.dirname(os.path.abspath(__file__))
             final_dir = os.path.join(cur_dir, 'src', ''+ company['companyLogo'] + ".csv")
             print(final_dir)
             history = get_history_from_csv(final_dir)
             company["data"] = history
+            
 
             send_data_mongo(company)
+            
 
             
             
