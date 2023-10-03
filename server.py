@@ -8,8 +8,17 @@ import threading
 import random
 import time
 import datetime
-
 from liveDataExample import livefetch
+
+import requests
+from bs4 import BeautifulSoup
+# from tabulate import tabulate
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.support.ui import WebDriverWait
 
 
 app = Flask(__name__)
@@ -20,27 +29,41 @@ client = MongoClient(
 db = client["realTimeStockData"]
 CORS(app,resources={r"/*":{"origins":"*"}})
 socketio = SocketIO(app,cors_allowed_origins="*")
+KILL_THREAD = False
 
 ALL_STOCKS = []
+STOCK_URL = 'https://finance.yahoo.com/quote/'
+
 
 def emit_random_number(socket):
     while True:
-        num = round(random.uniform(100,200), 2)
+        # num = round(random.uniform(100,200), 2)
         # print(num)
-        socketio.emit('live data', num)
+        new = livefetch(ALL_STOCKS)
+        socketio.emit('live data', new)
+        # print(new)
+        time.sleep(5)
 
-        time.sleep(2)
-def emit_live_data(socket):
-    while True:
-        liveList = livefetch(ALL_STOCKS)
-        socketio.emit('live list', liveList)
-        # print('here')
-        time.sleep(2)
+  
+    
+    # for stock in ALL_STOCKS:
+    #     ALL_STOCKS_THREAD.append(threading.Thread(target=set_all_drivers, args=(stock['companyLogo'],)))
+    #     ALL_STOCKS_THREAD[len(ALL_STOCKS_THREAD)-1].setDaemon = True
+    #     ALL_STOCKS_THREAD[len(ALL_STOCKS_THREAD)-1].start()
+    #     time.sleep(5)
+    # while True:
+    #     liveList = livefetch(ALL_STOCKS, ALL_STOCKS_DRIVER)
+    #     socketio.emit('live list', liveList)
+    #     time.sleep(2)
+    #     if KILL_THREAD == True:
+    #         for thread in ALL_STOCKS_THREAD:
+    #             thread.join()
         
         
 
 def current_stock_list():
     allData = db["history_data"].find({}, {'data': 0})
+    print(allData)
     dataJson = []
     for data in allData:
         dataJson.append(
@@ -102,9 +125,10 @@ def single_stock_data(id):
 def connected():
     print(request.sid)
     print("Client is Connected")
+    KILL_THREAD = False
     socketio.emit('hi server',{'id': request.sid})
-
-    t = threading.Thread(target=emit_live_data, args=(socketio,))
+    
+    t = threading.Thread(target=emit_random_number, args=(socketio,))
     t.daemon = True
     t.start()
 
@@ -113,6 +137,7 @@ def connected():
 @socketio.on("disconnect")
 def disconnect():
     print(request.sid)
+    KILL_THREAD = True
     print('Client disconnected')
 
 # Running app
